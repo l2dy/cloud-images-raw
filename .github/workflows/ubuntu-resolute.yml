@@ -1,0 +1,46 @@
+name: Download, convert, and archive Ubuntu cloud image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install qemu-img
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils
+
+      - name: Download qcow2 image
+        run: |
+          curl -fL --retry 3 --retry-delay 2 \
+            -o ubuntu-26.04-server-cloudimg-amd64v3.img \
+            https://cloud-images.ubuntu.com/releases/resolute/release/ubuntu-26.04-server-cloudimg-amd64v3.img
+
+      - name: Checksum downloaded image
+        run: |
+          sha256sum ubuntu-26.04-server-cloudimg-amd64v3.img \
+            | tee ubuntu-26.04-server-cloudimg-amd64v3.img.sha256
+
+      - name: Convert to raw
+        run: |
+          qemu-img convert -f qcow2 -O raw \
+            ubuntu-26.04-server-cloudimg-amd64v3.img \
+            ubuntu-26.04-server-cloudimg-amd64v3.raw
+
+      - name: Checksum raw image
+        run: |
+          sha256sum ubuntu-26.04-server-cloudimg-amd64v3.raw \
+            | tee ubuntu-26.04-server-cloudimg-amd64v3.raw.sha256
+
+      - name: Upload raw image and checksums
+        uses: actions/upload-artifact@v7
+        with:
+          name: ubuntu-26.04-server-cloudimg-amd64v3-raw
+          path: |
+            ubuntu-26.04-server-cloudimg-amd64v3.raw
+            ubuntu-26.04-server-cloudimg-amd64v3.img.sha256
+            ubuntu-26.04-server-cloudimg-amd64v3.raw.sha256
+          if-no-files-found: error
